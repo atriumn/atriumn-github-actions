@@ -8,6 +8,7 @@ This directory contains comprehensive documentation for the Atriumn GitHub Actio
 - **[Development Guide](./development.md)** - Set up your development environment
 - **[Setup Guide](./SETUP.md)** - Configure repository settings
 - **[Repository Settings](./repository-settings.md)** - Required repository settings
+- **[Release Process](./releases.md)** - How to create and manage releases
 
 ### Available Actions
 

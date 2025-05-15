@@ -96,6 +96,8 @@ atriumn-github-actions/
 - [Development Setup](./docs/development.md)
 - [Repository Setup](./docs/SETUP.md)
 - [Repository Settings](./docs/repository-settings.md)
+- [Versioning Strategy](./VERSIONING.md)
+- [Changelog](./CHANGELOG.md)
 
 ## Support
 
