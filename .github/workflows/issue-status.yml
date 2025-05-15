@@ -14,6 +14,9 @@ jobs:
   update-status:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Extract issue number
         id: extract-issue
         env:
@@ -91,7 +94,7 @@ jobs:
         if: |
           steps.extract-issue.outputs.skip != 'true' && 
           steps.determine-status.outputs.skip != 'true'
-        uses: atriumn/atriumn-github-actions/update-issue-status@v1
+        uses: ./update-issue-status
         with:
           issue-number: ${{ steps.extract-issue.outputs.issue_number }}
           status: ${{ steps.determine-status.outputs.status }}
