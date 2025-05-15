@@ -1,0 +1,108 @@
+name: Test Issue Comment Commands
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue-number:
+        description: 'Issue number to test with'
+        required: true
+        type: string
+      command:
+        description: 'Command to test (start, done, review, close)'
+        required: true
+        type: choice
+        options:
+          - start
+          - done
+          - review
+          - close
+      username:
+        description: 'Username to simulate comment from'
+        required: true
+        type: string
+
+jobs:
+  test-command:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Simulate issue comment
+        run: |
+          # Create comment with command
+          COMMENT_BODY="Testing /${{ inputs.command }} command via workflow"
+          gh issue comment ${{ inputs.issue-number }} --body "$COMMENT_BODY"
+          
+          # Wait for issue comment workflow to process
+          echo "Waiting for workflow to process command..."
+          sleep 10
+          
+          # Check results
+          echo "Checking issue state after command..."
+          gh issue view ${{ inputs.issue-number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check authorization (simulated)
+        run: |
+          echo "Testing authorization check for user: ${{ inputs.username }}"
+          
+          # Check permission level
+          PERMISSION_LEVEL=$(gh api repos/${{ github.repository }}/collaborators/${{ inputs.username }}/permission -q '.permission' || echo "none")
+          
+          if [[ "$PERMISSION_LEVEL" == "write" || "$PERMISSION_LEVEL" == "admin" ]]; then
+            echo "✅ User has write permissions (level: $PERMISSION_LEVEL)"
+          else
+            echo "❌ User does not have write permissions (level: $PERMISSION_LEVEL)"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test command processing
+        run: |
+          echo "Testing command processing for: /${{ inputs.command }}"
+          
+          # Get latest comment to see if command was processed
+          LATEST_COMMENT=$(gh issue view ${{ inputs.issue-number }} --json comments --jq '.comments[-1].body')
+          echo "Latest comment: $LATEST_COMMENT"
+          
+          # Check if command was acknowledged
+          case "${{ inputs.command }}" in
+            "start")
+              if [[ "$LATEST_COMMENT" == *"is starting work on this issue"* ]]; then
+                echo "✅ Start command processed successfully"
+              else
+                echo "❌ Start command not processed as expected"
+              fi
+              ;;
+            "done")
+              if [[ "$LATEST_COMMENT" == *"has marked this issue as done"* ]]; then
+                echo "✅ Done command processed successfully"
+              else
+                echo "❌ Done command not processed as expected"
+              fi
+              ;;
+            "review")
+              if [[ "$LATEST_COMMENT" == *"is requesting review for this issue"* ]]; then
+                echo "✅ Review command processed successfully"
+              else
+                echo "❌ Review command not processed as expected"
+              fi
+              ;;
+            "close")
+              # Check if issue is closed
+              ISSUE_STATE=$(gh issue view ${{ inputs.issue-number }} --json state --jq '.state')
+              if [[ "$ISSUE_STATE" == "CLOSED" ]]; then
+                echo "✅ Close command processed successfully"
+              else
+                echo "❌ Close command not processed as expected"
+              fi
+              ;;
+          esac
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
