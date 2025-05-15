@@ -1,39 +1,119 @@
 # Atriumn GitHub Actions
 
-Reusable GitHub Actions composite actions for Atriumn projects.
+A comprehensive collection of reusable GitHub Actions composite actions for Atriumn projects.
 
-## Available Actions
+## Overview
 
-This repository contains composite GitHub Actions that can be used across Atriumn projects to standardize and simplify workflows.
+This repository provides standardized, reusable composite actions that help automate common workflows across Atriumn projects. These actions promote consistency, reduce duplication, and simplify CI/CD pipeline implementation.
 
-### setup-node
+## Action Catalog
 
-Sets up a standard Node.js environment with caching and dependency installation.
+### Issue Management Actions
 
+#### [handle-issue-commands](./handle-issue-commands/)
+Processes slash commands in GitHub issue comments.
+```yaml
+- uses: atriumn/atriumn-github-actions/handle-issue-commands@main
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    issue-number: ${{ github.event.issue.number }}
+    comment-body: ${{ github.event.comment.body }}
+```
+
+#### [create-issue-branch](./create-issue-branch/)
+Creates standardized branches for GitHub issues.
+```yaml
+- uses: atriumn/atriumn-github-actions/create-issue-branch@main
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    issue-number: ${{ github.event.issue.number }}
+```
+
+#### [update-issue-status](./update-issue-status/)
+Updates issue status based on workflow events.
+```yaml
+- uses: atriumn/atriumn-github-actions/update-issue-status@main
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    issue-number: ${{ github.event.issue.number }}
+    status: 'in-progress'
+```
+
+### Development Environment Actions
+
+#### [setup-node](./.github/actions/setup-node/)
+Sets up Node.js environment with caching.
 ```yaml
 - uses: atriumn/atriumn-github-actions/.github/actions/setup-node@main
   with:
-    node-version: '20'  # optional
+    node-version: '20'
 ```
 
-### Usage
+## Quick Start
 
-To use these actions in your workflows, reference them as:
+### Using an Action
 
+1. Add the action to your workflow file:
 ```yaml
-- uses: atriumn/atriumn-github-actions/.github/actions/action-name@main
+name: My Workflow
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: atriumn/atriumn-github-actions/setup-node@main
+        with:
+          node-version: '20'
 ```
 
-## Contributing
+2. Configure inputs as needed (see individual action documentation)
 
-To add a new composite action:
-1. Create a new directory under `.github/actions/[action-name]`
-2. Add `action.yml` with the action definition
-3. Document the action in this README
-4. Test the action in a workflow
+### Best Practices
+
+- Always use a specific version tag instead of `main` for production workflows
+- Review action documentation for required inputs and outputs
+- Consider using action outputs for workflow orchestration
+
+## Repository Structure
+
+```
+atriumn-github-actions/
+├── .github/
+│   ├── actions/        # Standard GitHub Actions location
+│   ├── workflows/      # Test and validation workflows
+│   └── settings.yml    # Repository configuration
+├── create-issue-branch/   # Issue branch creation action
+├── handle-issue-commands/ # Issue command processing action
+├── update-issue-status/   # Issue status management action
+├── docs/                 # Additional documentation
+└── README.md            # This file
+```
+
+## Documentation
+
+- [Contributing Guidelines](./CONTRIBUTING.md)
+- [Development Setup](./docs/development.md)
+- [Repository Setup](./docs/SETUP.md)
+- [Repository Settings](./docs/repository-settings.md)
+
+## Support
+
+- **Issues**: [Report bugs or request features](https://github.com/atriumn/atriumn-github-actions/issues)
+- **Discussions**: [Ask questions or share ideas](https://github.com/atriumn/atriumn-github-actions/discussions)
 
 ## Topics
 
 - `github-actions`
 - `composite-actions`
 - `automation`
+- `ci-cd`
+- `devops`
+
+## License
+
+See [LICENSE](./LICENSE) file for details.
+
+---
+
+*Maintained by the Atriumn team*
