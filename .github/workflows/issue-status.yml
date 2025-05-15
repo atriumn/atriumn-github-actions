@@ -1,0 +1,106 @@
+name: Update Issue Status
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, closed]
+    branches:
+      - main
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  update-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract issue number
+        id: extract-issue
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          echo "🔍 Extracting issue number from PR..."
+          
+          # Try to extract from PR title (e.g., "Fix #123: ...")
+          ISSUE_NUMBER=""
+          if [[ "$PR_TITLE" =~ #([0-9]+) ]]; then
+            ISSUE_NUMBER="${BASH_REMATCH[1]}"
+            echo "Found issue number in title: #$ISSUE_NUMBER"
+          fi
+          
+          # If not found in title, try PR body
+          if [ -z "$ISSUE_NUMBER" ]; then
+            # Handle multiline PR body by converting newlines to spaces
+            PR_BODY_SINGLE_LINE=$(echo "$PR_BODY" | tr '\n' ' ')
+            if [[ "$PR_BODY_SINGLE_LINE" =~ [Ff]ixes[[:space:]]+#([0-9]+) ]]; then
+              ISSUE_NUMBER="${BASH_REMATCH[1]}"
+              echo "Found issue number in body: #$ISSUE_NUMBER"
+            fi
+          fi
+          
+          # If not found in body, try branch name (e.g., "issue-123-...")
+          if [ -z "$ISSUE_NUMBER" ] && [[ "$PR_BRANCH" =~ issue-([0-9]+)- ]]; then
+            ISSUE_NUMBER="${BASH_REMATCH[1]}"
+            echo "Found issue number in branch: #$ISSUE_NUMBER"
+          fi
+          
+          if [ -z "$ISSUE_NUMBER" ]; then
+            echo "⚠️ No issue number found in PR title, body, or branch name"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Issue number: #$ISSUE_NUMBER"
+            echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine new status
+        if: steps.extract-issue.outputs.skip != 'true'
+        id: determine-status
+        run: |
+          echo "🔍 Determining status based on PR event..."
+          
+          PR_EVENT="${{ github.event.action }}"
+          PR_STATE="${{ github.event.pull_request.state }}"
+          PR_MERGED="${{ github.event.pull_request.merged }}"
+          
+          echo "PR Event: $PR_EVENT"
+          echo "PR State: $PR_STATE"
+          echo "PR Merged: $PR_MERGED"
+          
+          STATUS=""
+          if [[ "$PR_EVENT" == "opened" ]]; then
+            STATUS="Waiting for Review"
+          elif [[ "$PR_EVENT" == "ready_for_review" ]]; then
+            STATUS="Waiting for Review"
+          elif [[ "$PR_EVENT" == "closed" ]]; then
+            if [[ "$PR_MERGED" == "true" ]]; then
+              STATUS="Done"
+            else
+              STATUS="Todo"
+            fi
+          fi
+          
+          if [ -z "$STATUS" ]; then
+            echo "⚠️ Could not determine status for PR event: $PR_EVENT"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ New status: $STATUS"
+            echo "status=$STATUS" >> $GITHUB_OUTPUT
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update issue status
+        if: |
+          steps.extract-issue.outputs.skip != 'true' && 
+          steps.determine-status.outputs.skip != 'true'
+        uses: ./update-issue-status
+        with:
+          issue-number: ${{ steps.extract-issue.outputs.issue_number }}
+          status: ${{ steps.determine-status.outputs.status }}
+          token: ${{ secrets.PROJECT_TOKEN }}
+          organization: 'atriumn'

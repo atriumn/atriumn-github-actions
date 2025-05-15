@@ -1,0 +1,141 @@
+name: Test Create Issue Branch Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue-number:
+        description: 'Issue number to create branch for'
+        required: true
+        default: '1'
+      branch-prefix:
+        description: 'Branch prefix'
+        required: false
+        default: 'issue'
+      with-timestamp:
+        description: 'Include timestamp in branch name'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  test-create-branch:
+    name: Test Create Branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test create-issue-branch action
+        id: test
+        uses: ./create-issue-branch
+        with:
+          issue-number: ${{ inputs.issue-number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          branch-prefix: ${{ inputs.branch-prefix }}
+          timestamp: ${{ inputs.with-timestamp }}
+
+      - name: Verify results
+        run: |
+          echo "🔍 Test Results:"
+          echo "Issue Number: ${{ inputs.issue-number }}"
+          echo "Branch Prefix: ${{ inputs.branch-prefix }}"
+          echo "Timestamp: ${{ inputs.with-timestamp }}"
+          echo "Created Branch: ${{ steps.test.outputs.branch-name }}"
+          
+          if [ -z "${{ steps.test.outputs.branch-name }}" ]; then
+            echo "❌ Error: No branch name returned"
+            exit 1
+          fi
+          echo "✅ Branch created successfully"
+
+      - name: Verify branch exists
+        id: verify
+        run: |
+          BRANCH_NAME="${{ steps.test.outputs.branch-name }}"
+          echo "🔍 Verifying branch exists: $BRANCH_NAME"
+          
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            echo "✅ Branch exists on remote"
+          else
+            echo "❌ Error: Branch not found on remote"
+            exit 1
+          fi
+
+  test-existing-branch:
+    name: Test Existing Branch Handling
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create test issue
+        id: create-issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Test Issue for Branch Creation',
+              body: 'This is a test issue for testing branch creation'
+            });
+            return issue.data.number;
+          result-encoding: string
+
+      - name: Create branch first time
+        id: first-create
+        uses: ./create-issue-branch
+        with:
+          issue-number: ${{ steps.create-issue.outputs.result }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          branch-prefix: 'test'
+          timestamp: 'false'
+
+      - name: Try to create same branch again (should fail)
+        id: second-create
+        uses: ./create-issue-branch
+        with:
+          issue-number: ${{ steps.create-issue.outputs.result }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          branch-prefix: 'test'
+          timestamp: 'false'
+        continue-on-error: true
+
+      - name: Verify duplicate branch handling
+        run: |
+          echo "🔍 Testing duplicate branch handling"
+          echo "First branch: ${{ steps.first-create.outputs.branch-name }}"
+          echo "Second attempt should have failed"
+          
+          if [ "${{ steps.second-create.outcome }}" == "failure" ]; then
+            echo "✅ Correctly failed on duplicate branch without timestamp"
+          else
+            echo "❌ Error: Should have failed on duplicate branch"
+            exit 1
+          fi
+
+      - name: Cleanup test issue
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.create-issue.outputs.result }},
+              state: 'closed'
+            });
+
+      - name: Cleanup test branch
+        if: always()
+        run: |
+          BRANCH_NAME="${{ steps.first-create.outputs.branch-name }}"
+          if [ -n "$BRANCH_NAME" ]; then
+            git push origin --delete "$BRANCH_NAME" || echo "Branch may already be deleted"
+          fi

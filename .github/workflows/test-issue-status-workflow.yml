@@ -1,0 +1,159 @@
+name: Test Issue Status Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr-event:
+        description: 'PR event to simulate'
+        required: true
+        default: 'opened'
+        type: choice
+        options:
+          - opened
+          - ready_for_review
+          - closed
+      pr-title:
+        description: 'PR title (include issue number like #123)'
+        required: true
+        default: 'Fix #123: Test PR'
+      is-merged:
+        description: 'Simulate merged PR (for closed event)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  test-issue-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create test issue
+        id: create-issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Test Issue for Status Update',
+              body: 'This is a test issue for testing status updates'
+            });
+            return issue.data.number;
+          result-encoding: string
+
+      - name: Update PR title to include issue number
+        run: |
+          echo "Using issue #${{ steps.create-issue.outputs.result }}"
+          echo "PR_TITLE=Fix #${{ steps.create-issue.outputs.result }}: Test PR" >> $GITHUB_ENV
+
+      - name: Simulate PR event context
+        id: simulate-pr
+        run: |
+          echo "🔍 Simulating PR event: ${{ inputs.pr-event }}"
+          echo "PR Title: $PR_TITLE"
+          
+          # Export variables to simulate PR context
+          echo "pr_event=${{ inputs.pr-event }}" >> $GITHUB_OUTPUT
+          echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
+          echo "pr_merged=${{ inputs.is-merged }}" >> $GITHUB_OUTPUT
+
+      - name: Extract issue number (simulated)
+        id: extract-issue
+        env:
+          PR_TITLE: ${{ steps.simulate-pr.outputs.pr_title }}
+          PR_BODY: ""
+          PR_BRANCH: "issue-${{ steps.create-issue.outputs.result }}-test"
+        run: |
+          echo "🔍 Extracting issue number from PR..."
+          
+          ISSUE_NUMBER=""
+          if [[ "$PR_TITLE" =~ #([0-9]+) ]]; then
+            ISSUE_NUMBER="${BASH_REMATCH[1]}"
+            echo "Found issue number in title: #$ISSUE_NUMBER"
+          fi
+          
+          if [ -z "$ISSUE_NUMBER" ]; then
+            echo "⚠️ No issue number found"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Issue number: #$ISSUE_NUMBER"
+            echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine new status (simulated)
+        if: steps.extract-issue.outputs.skip != 'true'
+        id: determine-status
+        run: |
+          echo "🔍 Determining status based on PR event..."
+          
+          PR_EVENT="${{ steps.simulate-pr.outputs.pr_event }}"
+          PR_MERGED="${{ steps.simulate-pr.outputs.pr_merged }}"
+          
+          echo "PR Event: $PR_EVENT"
+          echo "PR Merged: $PR_MERGED"
+          
+          STATUS=""
+          if [[ "$PR_EVENT" == "opened" ]]; then
+            STATUS="Waiting for Review"
+          elif [[ "$PR_EVENT" == "ready_for_review" ]]; then
+            STATUS="Waiting for Review"
+          elif [[ "$PR_EVENT" == "closed" ]]; then
+            if [[ "$PR_MERGED" == "true" ]]; then
+              STATUS="Done"
+            else
+              STATUS="Todo"
+            fi
+          fi
+          
+          if [ -z "$STATUS" ]; then
+            echo "⚠️ Could not determine status"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ New status: $STATUS"
+            echo "status=$STATUS" >> $GITHUB_OUTPUT
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Test update issue status
+        if: |
+          steps.extract-issue.outputs.skip != 'true' && 
+          steps.determine-status.outputs.skip != 'true'
+        id: update-status
+        uses: ./update-issue-status
+        with:
+          issue-number: ${{ steps.extract-issue.outputs.issue_number }}
+          status: ${{ steps.determine-status.outputs.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          organization: ${{ github.repository_owner }}
+
+      - name: Verify results
+        run: |
+          echo "🔍 Test Results:"
+          echo "PR Event: ${{ inputs.pr-event }}"
+          echo "Issue Number: ${{ steps.extract-issue.outputs.issue_number }}"
+          echo "Determined Status: ${{ steps.determine-status.outputs.status }}"
+          echo "Update Success: ${{ steps.update-status.outcome }}"
+          
+          if [ "${{ steps.update-status.outcome }}" != "success" ]; then
+            echo "❌ Error: Status update failed"
+            exit 1
+          fi
+          echo "✅ Test completed successfully"
+
+      - name: Cleanup test issue
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.create-issue.outputs.result }},
+              state: 'closed'
+            });

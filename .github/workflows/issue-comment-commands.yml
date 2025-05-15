@@ -1,0 +1,130 @@
+name: Issue Comment Commands
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  handle-start-command:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.issue.pull_request == null &&
+      contains(github.event.comment.body, '/start')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Handle start command
+        id: handle-start-command
+        uses: ./handle-issue-commands
+        with:
+          command: 'start'
+          issue-number: ${{ github.event.issue.number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          comment-user: ${{ github.event.comment.user.login }}
+
+      - name: Create branch for issue
+        if: steps.handle-start-command.outputs.authorized == 'true' && steps.handle-start-command.outputs.processed == 'true'
+        uses: ./create-issue-branch
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+
+      - name: Update issue status to In Progress
+        if: steps.handle-start-command.outputs.authorized == 'true' && steps.handle-start-command.outputs.processed == 'true'
+        uses: ./update-issue-status
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          status: 'In Progress'
+          token: ${{ secrets.PROJECT_TOKEN }}
+          organization: 'atriumn'
+
+  handle-done-command:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.issue.pull_request == null &&
+      contains(github.event.comment.body, '/done')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Handle done command
+        id: handle-done-command
+        uses: ./handle-issue-commands
+        with:
+          command: 'done'
+          issue-number: ${{ github.event.issue.number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          comment-user: ${{ github.event.comment.user.login }}
+
+      - name: Update issue status to Done
+        if: steps.handle-done-command.outputs.authorized == 'true' && steps.handle-done-command.outputs.processed == 'true'
+        uses: ./update-issue-status
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          status: 'Done'
+          token: ${{ secrets.PROJECT_TOKEN }}
+          organization: 'atriumn'
+
+  handle-review-command:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.issue.pull_request == null &&
+      contains(github.event.comment.body, '/review')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Handle review command
+        id: handle-review-command
+        uses: ./handle-issue-commands
+        with:
+          command: 'review'
+          issue-number: ${{ github.event.issue.number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          comment-user: ${{ github.event.comment.user.login }}
+
+      - name: Update issue status to Waiting for Review
+        if: steps.handle-review-command.outputs.authorized == 'true' && steps.handle-review-command.outputs.processed == 'true'
+        uses: ./update-issue-status
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          status: 'Waiting for Review'
+          token: ${{ secrets.PROJECT_TOKEN }}
+          organization: 'atriumn'
+
+  handle-close-command:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.issue.pull_request == null &&
+      contains(github.event.comment.body, '/close')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Handle close command
+        id: handle-close-command
+        uses: ./handle-issue-commands
+        with:
+          command: 'close'
+          issue-number: ${{ github.event.issue.number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          comment-user: ${{ github.event.comment.user.login }}
