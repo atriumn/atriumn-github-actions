@@ -23,12 +23,15 @@ Parses and handles slash commands in issue comments with authorization checking 
 ```
 
 #### [create-issue-branch](./create-issue-branch/)
-Creates standardized branches for GitHub issues.
+Creates and pushes new branches for issues with timestamp-based naming and conflict handling.
 ```yaml
 - uses: atriumn/atriumn-github-actions/create-issue-branch@main
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
     issue-number: ${{ github.event.issue.number }}
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    repository: ${{ github.repository }}
+    branch-prefix: 'issue'  # Optional
+    timestamp: 'true'      # Optional
 ```
 
 #### [update-issue-status](./update-issue-status/)
