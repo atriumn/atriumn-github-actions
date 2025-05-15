@@ -1,0 +1,139 @@
+name: Test Handle Issue Commands Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-command:
+        description: 'Command to test'
+        required: true
+        default: 'start'
+        type: choice
+        options:
+          - start
+          - done
+          - review
+          - close
+      test-user:
+        description: 'Test username'
+        required: true
+        default: 'test-user'
+      issue-number:
+        description: 'Issue number to test with'
+        required: true
+        default: '1'
+
+jobs:
+  test-authorized:
+    name: Test Authorized Command
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test handle-issue-commands action
+        id: test
+        uses: ./handle-issue-commands
+        with:
+          command: ${{ inputs.test-command }}
+          issue-number: ${{ inputs.issue-number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          comment-user: ${{ github.actor }}
+
+      - name: Verify results
+        run: |
+          echo "🔍 Test Results:"
+          echo "Command: ${{ inputs.test-command }}"
+          echo "Authorized: ${{ steps.test.outputs.authorized }}"
+          echo "Processed: ${{ steps.test.outputs.processed }}"
+          
+          if [[ "${{ steps.test.outputs.authorized }}" != "true" ]]; then
+            echo "❌ Error: Expected authorized=true for user ${{ github.actor }}"
+            exit 1
+          fi
+          echo "✅ Authorization check passed"
+
+  test-unauthorized:
+    name: Test Unauthorized Command
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create test issue
+        id: create-issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Test Issue for Unauthorized Command',
+              body: 'This is a test issue for testing unauthorized commands'
+            });
+            return issue.data.number;
+          result-encoding: string
+
+      - name: Test handle-issue-commands action (unauthorized)
+        id: test-unauth
+        uses: ./handle-issue-commands
+        with:
+          command: ${{ inputs.test-command }}
+          issue-number: ${{ steps.create-issue.outputs.result }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          comment-user: 'unauthorized-test-user'
+        continue-on-error: true
+
+      - name: Verify unauthorized result
+        run: |
+          echo "🔍 Unauthorized Test Results:"
+          echo "Command: ${{ inputs.test-command }}"
+          echo "Authorized: ${{ steps.test-unauth.outputs.authorized }}"
+          echo "Processed: ${{ steps.test-unauth.outputs.processed }}"
+          
+          if [[ "${{ steps.test-unauth.outputs.authorized }}" == "true" ]]; then
+            echo "❌ Error: Expected authorized=false for unauthorized user"
+            exit 1
+          fi
+          echo "✅ Unauthorized user correctly rejected"
+
+      - name: Close test issue
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.create-issue.outputs.result }},
+              state: 'closed'
+            });
+
+  test-invalid-command:
+    name: Test Invalid Command
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test handle-issue-commands action (invalid command)
+        id: test-invalid
+        uses: ./handle-issue-commands
+        with:
+          command: 'invalid-command'
+          issue-number: '1'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          comment-user: ${{ github.actor }}
+        continue-on-error: true
+
+      - name: Verify invalid command result
+        run: |
+          echo "🔍 Invalid Command Test Results:"
+          echo "Command: invalid-command"
+          echo "Authorized: ${{ steps.test-invalid.outputs.authorized }}"
+          echo "Processed: ${{ steps.test-invalid.outputs.processed }}"
+          echo "Valid (should be false): ${{ steps.test-invalid.outputs.valid }}"
+          
+          echo "✅ Invalid command handling test completed"
