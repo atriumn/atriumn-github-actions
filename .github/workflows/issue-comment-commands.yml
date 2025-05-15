@@ -1,0 +1,49 @@
+name: Issue Comment Commands
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  handle-start-command:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.issue.pull_request == null &&
+      contains(github.event.comment.body, '/start')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Handle start command
+        id: handle-start-command
+        uses: atriumn/atriumn-github-actions/handle-issue-commands@v1
+        with:
+          command: 'start'
+          issue-number: ${{ github.event.issue.number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          comment-user: ${{ github.event.comment.user.login }}
+
+      - name: Create branch for issue
+        if: steps.handle-start-command.outputs.authorized == 'true'
+        uses: atriumn/atriumn-github-actions/create-issue-branch@v1
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+
+      - name: Update issue status to In Progress
+        if: steps.handle-start-command.outputs.authorized == 'true'
+        uses: atriumn/atriumn-github-actions/update-issue-status@v1
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          status: 'In Progress'
+          token: ${{ secrets.PROJECT_TOKEN }}
+          organization: 'atriumn'
