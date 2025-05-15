@@ -62,7 +62,7 @@ See our [Development Guide](./docs/development.md) for detailed setup instructio
 - Use clear, descriptive names for actions and inputs
 - Follow YAML best practices
 - Keep actions focused on a single responsibility
-- Use semantic versioning for releases
+- Follow our [Versioning Strategy](./VERSIONING.md)
 - Add appropriate error handling
 
 ### Testing
