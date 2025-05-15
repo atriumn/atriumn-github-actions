@@ -15,7 +15,7 @@ This directory contains comprehensive documentation for the Atriumn GitHub Actio
 #### Issue Management
 1. **[handle-issue-commands](../handle-issue-commands/README.md)** - Process slash commands in comments
 2. **[create-issue-branch](../create-issue-branch/README.md)** - Create standardized issue branches
-3. **[update-issue-status](../update-issue-status/README.md)** - Update issue status labels
+3. **[update-issue-status](../update-issue-status/README.md)** - Update issue status in project boards
 
 #### Development Tools
 1. **[setup-node](../.github/actions/setup-node/README.md)** - Configure Node.js environment

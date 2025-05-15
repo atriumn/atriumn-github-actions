@@ -1,0 +1,86 @@
+name: Test Update Issue Status Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue-number:
+        description: 'Issue number to update'
+        required: true
+        type: number
+      status:
+        description: 'Status to set'
+        required: true
+        type: choice
+        options:
+          - Todo
+          - In Progress
+          - In Review
+          - Done
+          - Blocked
+      project-name:
+        description: 'Project name (optional)'
+        required: false
+        type: string
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Test update issue status
+        uses: ./update-issue-status
+        with:
+          issue-number: ${{ inputs.issue-number }}
+          status: ${{ inputs.status }}
+          token: ${{ secrets.PROJECT_TOKEN || secrets.GITHUB_TOKEN }}
+          organization: ${{ github.repository_owner }}
+          project-name: ${{ inputs.project-name }}
+      
+      - name: Verify update
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "✅ Successfully tested update-issue-status action"
+          echo "Updated issue #${{ inputs.issue-number }} to status: ${{ inputs.status }}"
+
+  test-error-handling:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Test missing required inputs
+        continue-on-error: true
+        id: test-missing-inputs
+        uses: ./update-issue-status
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Verify error handling
+        run: |
+          if [ "${{ steps.test-missing-inputs.outcome }}" == "failure" ]; then
+            echo "✅ Correctly failed on missing inputs"
+          else
+            echo "❌ Should have failed on missing inputs"
+            exit 1
+          fi
+      
+      - name: Test invalid status
+        continue-on-error: true
+        id: test-invalid-status
+        uses: ./update-issue-status
+        with:
+          issue-number: 1
+          status: 'InvalidStatus'
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Verify status validation
+        run: |
+          if [ "${{ steps.test-invalid-status.outcome }}" == "failure" ]; then
+            echo "✅ Correctly failed on invalid status"
+          else
+            echo "❌ Should have failed on invalid status"
+            exit 1
+          fi
