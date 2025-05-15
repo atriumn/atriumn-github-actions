@@ -18,6 +18,6 @@ This composite action sets up a standard Node.js environment for Atriumn project
 ## What it does
 
 1. Sets up Node.js with the specified version
-2. Configures NPM caching
-3. Installs dependencies using `npm ci`
-4. Caches node modules for faster subsequent runs
+2. Configures NPM caching for faster subsequent runs
+3. Automatically detects and installs dependencies if package.json exists
+4. Uses `npm ci` for lockfile-based installs or `npm install` otherwise
