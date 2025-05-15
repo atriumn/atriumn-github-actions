@@ -35,13 +35,14 @@ Creates and pushes new branches for issues with timestamp-based naming and confl
 ```
 
 #### [update-issue-status](./update-issue-status/)
-Updates issue status based on workflow events.
+Updates issue status in GitHub Projects V2 boards using GraphQL API.
 ```yaml
 - uses: atriumn/atriumn-github-actions/update-issue-status@main
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
     issue-number: ${{ github.event.issue.number }}
-    status: 'in-progress'
+    status: 'In Progress'
+    token: ${{ secrets.PROJECT_TOKEN }}
+    organization: 'atriumn'
 ```
 
 ### Development Environment Actions
