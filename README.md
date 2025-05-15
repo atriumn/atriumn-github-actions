@@ -11,13 +11,15 @@ This repository provides standardized, reusable composite actions that help auto
 ### Issue Management Actions
 
 #### [handle-issue-commands](./handle-issue-commands/)
-Processes slash commands in GitHub issue comments.
+Parses and handles slash commands in issue comments with authorization checking and command validation.
 ```yaml
 - uses: atriumn/atriumn-github-actions/handle-issue-commands@main
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
+    command: 'start'
     issue-number: ${{ github.event.issue.number }}
-    comment-body: ${{ github.event.comment.body }}
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    repository: ${{ github.repository }}
+    comment-user: ${{ github.event.comment.user.login }}
 ```
 
 #### [create-issue-branch](./create-issue-branch/)
