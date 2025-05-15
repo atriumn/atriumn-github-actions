@@ -1,0 +1,76 @@
+name: Validate Branch Protection
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sundays
+  workflow_dispatch:
+
+jobs:
+  validate-protection:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Check branch protection
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if main branch has protection rules
+          PROTECTION=$(gh api repos/${{ github.repository }}/branches/main/protection -H "Accept: application/vnd.github+json" 2>/dev/null || echo "NOT_PROTECTED")
+          
+          if [ "$PROTECTION" = "NOT_PROTECTED" ]; then
+            echo "❌ ERROR: Main branch is not protected!"
+            echo "Please configure branch protection rules as specified in docs/repository-settings.md"
+            exit 1
+          else
+            echo "✅ Main branch protection is configured"
+            
+            # Check if PR reviews are required
+            REQUIRED_REVIEWS=$(echo "$PROTECTION" | grep -o '"required_approving_review_count":[0-9]*' | grep -o '[0-9]*$' || echo "0")
+            if [ "$REQUIRED_REVIEWS" -eq 0 ]; then
+              echo "⚠️ WARNING: PR reviews are not required"
+            else
+              echo "✅ PR reviews are required (count: $REQUIRED_REVIEWS)"
+            fi
+          fi
+      
+      - name: Check repository features
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check repository features
+          REPO_INFO=$(gh api repos/${{ github.repository }} -H "Accept: application/vnd.github+json")
+          
+          # Check if issues are enabled
+          HAS_ISSUES=$(echo "$REPO_INFO" | grep -o '"has_issues":[^,]*' | grep -o 'true\|false')
+          if [ "$HAS_ISSUES" = "true" ]; then
+            echo "✅ Issues are enabled"
+          else
+            echo "❌ ERROR: Issues are not enabled"
+            exit 1
+          fi
+          
+          # Check if discussions are enabled
+          HAS_DISCUSSIONS=$(echo "$REPO_INFO" | grep -o '"has_discussions":[^,]*' | grep -o 'true\|false')
+          if [ "$HAS_DISCUSSIONS" = "true" ]; then
+            echo "✅ Discussions are enabled"
+          else
+            echo "⚠️ WARNING: Discussions are not enabled"
+          fi
+          
+          # Check if wiki is disabled
+          HAS_WIKI=$(echo "$REPO_INFO" | grep -o '"has_wiki":[^,]*' | grep -o 'true\|false')
+          if [ "$HAS_WIKI" = "false" ]; then
+            echo "✅ Wiki is disabled"
+          else
+            echo "⚠️ WARNING: Wiki is enabled (should be disabled)"
+          fi
+          
+          # Check if projects are disabled
+          HAS_PROJECTS=$(echo "$REPO_INFO" | grep -o '"has_projects":[^,]*' | grep -o 'true\|false')
+          if [ "$HAS_PROJECTS" = "false" ]; then
+            echo "✅ Projects are disabled"
+          else
+            echo "⚠️ WARNING: Projects are enabled (should be disabled)"
+          fi
