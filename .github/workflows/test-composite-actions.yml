@@ -1,0 +1,24 @@
+name: Test Composite Actions
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-setup-node:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Test setup-node action
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+      
+      - name: Verify Node installation
+        run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
