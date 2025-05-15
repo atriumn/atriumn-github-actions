@@ -34,9 +34,13 @@ jobs:
           fi
           
           # If not found in title, try PR body
-          if [ -z "$ISSUE_NUMBER" ] && [[ "$PR_BODY" =~ [Ff]ixes[[:space:]]+#([0-9]+) ]]; then
-            ISSUE_NUMBER="${BASH_REMATCH[1]}"
-            echo "Found issue number in body: #$ISSUE_NUMBER"
+          if [ -z "$ISSUE_NUMBER" ]; then
+            # Handle multiline PR body by converting newlines to spaces
+            PR_BODY_SINGLE_LINE=$(echo "$PR_BODY" | tr '\n' ' ')
+            if [[ "$PR_BODY_SINGLE_LINE" =~ [Ff]ixes[[:space:]]+#([0-9]+) ]]; then
+              ISSUE_NUMBER="${BASH_REMATCH[1]}"
+              echo "Found issue number in body: #$ISSUE_NUMBER"
+            fi
           fi
           
           # If not found in body, try branch name (e.g., "issue-123-...")
