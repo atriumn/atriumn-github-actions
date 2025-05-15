@@ -7,9 +7,9 @@ set -e
 
 echo "🚀 Starting test data generation..."
 
-# Check for required environment variables
-if [ -z "$GITHUB_TOKEN" ]; then
-    echo "❌ Error: GITHUB_TOKEN environment variable is not set"
+# Check if gh is authenticated
+if ! gh auth status &>/dev/null; then
+    echo "❌ Error: gh CLI is not authenticated. Run 'gh auth login' first"
     exit 1
 fi
 

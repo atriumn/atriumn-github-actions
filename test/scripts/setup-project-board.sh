@@ -7,9 +7,9 @@ set -e
 
 echo "🏗️ Setting up project board..."
 
-# Check for required environment variables
-if [ -z "$GITHUB_TOKEN" ]; then
-    echo "❌ Error: GITHUB_TOKEN environment variable is not set"
+# Check if gh is authenticated
+if ! gh auth status &>/dev/null; then
+    echo "❌ Error: gh CLI is not authenticated. Run 'gh auth login' first"
     exit 1
 fi
 
@@ -18,6 +18,10 @@ ORG="atriumn"
 REPO="atriumn-github-actions-test-repo"
 PROJECT_NAME="atriumn-github-actions-test-repo project"
 
+# Get organization ID
+echo "📋 Getting organization ID..."
+ORG_ID=$(gh api graphql -f query="{organization(login: \"$ORG\") {id}}" --jq .data.organization.id)
+
 # Create project using GraphQL API
 echo "📋 Creating project: $PROJECT_NAME"
 
@@ -25,9 +29,8 @@ echo "📋 Creating project: $PROJECT_NAME"
 CREATE_PROJECT_MUTATION=$(cat <<EOF
 mutation {
   createProjectV2(input: {
-    ownerId: "$ORG"
+    ownerId: "$ORG_ID"
     title: "$PROJECT_NAME"
-    repositoryId: "$REPO"
   }) {
     projectV2 {
       id
@@ -55,7 +58,7 @@ fi
 
 # Get project ID if it already exists
 echo "🔍 Finding project ID..."
-PROJECTS=$(gh api "orgs/$ORG/projects" --jq '.[] | select(.name == "'"$PROJECT_NAME"'") | .id')
+# Remove the old Projects Classic API call
 
 if [ -z "$PROJECTS" ]; then
     # Try using GraphQL to find the project

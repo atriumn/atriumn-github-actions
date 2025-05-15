@@ -11,6 +11,13 @@ The test environment includes:
 - Configuration scripts
 - Verification tools
 
+## Important Note
+
+These scripts are designed to be run by users/administrators with appropriate GitHub tokens. They require:
+- A GitHub Personal Access Token with organization project permissions
+- Write access to the test repository
+- Organization-level permissions for project management
+
 ## Directory Structure
 
 ```

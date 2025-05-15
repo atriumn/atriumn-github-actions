@@ -8,27 +8,13 @@ set -e
 echo "🔍 Verifying test environment setup..."
 echo ""
 
-# Check for required environment variables
-MISSING_VARS=0
-
-echo "📋 Checking environment variables..."
-if [ -z "$GITHUB_TOKEN" ]; then
-    echo "❌ GITHUB_TOKEN is not set"
-    MISSING_VARS=$((MISSING_VARS + 1))
-else
-    echo "✅ GITHUB_TOKEN is set"
-fi
-
-if [ -z "$PROJECT_TOKEN" ]; then
-    echo "⚠️ PROJECT_TOKEN is not set (optional but recommended)"
-else
-    echo "✅ PROJECT_TOKEN is set"
-fi
-
-if [ $MISSING_VARS -gt 0 ]; then
-    echo ""
-    echo "❌ Missing required environment variables"
+# Check if gh is authenticated
+echo "📋 Checking gh CLI authentication..."
+if ! gh auth status &>/dev/null; then
+    echo "❌ gh CLI is not authenticated. Run 'gh auth login' first"
     exit 1
+else
+    echo "✅ gh CLI is authenticated"
 fi
 
 # Configuration

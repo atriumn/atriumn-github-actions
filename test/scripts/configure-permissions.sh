@@ -7,17 +7,14 @@ set -e
 
 echo "🔐 Configuring repository permissions..."
 
-# Check for required environment variables
-if [ -z "$GITHUB_TOKEN" ]; then
-    echo "❌ Error: GITHUB_TOKEN environment variable is not set"
+# Check if gh is authenticated
+if ! gh auth status &>/dev/null; then
+    echo "❌ Error: gh CLI is not authenticated. Run 'gh auth login' first"
     exit 1
 fi
 
-if [ -z "$PROJECT_TOKEN" ]; then
-    echo "⚠️ Warning: PROJECT_TOKEN environment variable is not set"
-    echo "  PROJECT_TOKEN is required for project operations"
-    echo "  Please set it and run this script again"
-fi
+# Note: For project operations, the authenticated gh user must have
+# organization-level project permissions
 
 # Configuration
 ORG="atriumn"
@@ -41,20 +38,11 @@ add_secret() {
 }
 
 # Add secrets
-echo "🔑 Adding repository secrets..."
-
-if [ -n "$PROJECT_TOKEN" ]; then
-    add_secret "PROJECT_TOKEN" "$PROJECT_TOKEN"
-    echo "✅ PROJECT_TOKEN added"
-else
-    echo "⚠️ Skipping PROJECT_TOKEN (not provided)"
-fi
-
-# Add GitHub token as a secret (for workflow use)
-if [ -n "$GITHUB_TOKEN" ]; then
-    add_secret "WORKFLOW_TOKEN" "$GITHUB_TOKEN"
-    echo "✅ WORKFLOW_TOKEN added"
-fi
+echo "🔑 Note: Repository secrets should be configured manually"
+echo "  The following secrets may be needed:"
+echo "  - PROJECT_TOKEN: For project operations"
+echo "  - WORKFLOW_TOKEN: For workflow operations"
+echo ""
 
 # Configure repository settings
 echo ""
