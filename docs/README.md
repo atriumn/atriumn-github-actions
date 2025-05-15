@@ -17,6 +17,11 @@ These composite actions work together to provide automated issue management:
 2. If a `/start` command is found, `create-issue-branch` creates a feature branch
 3. `update-issue-status` updates the issue labels/status throughout the workflow
 
+## Repository Configuration
+
+- **[Setup Guide](./SETUP.md)** - Manual setup steps for repository configuration
+- **[Repository Settings](./repository-settings.md)** - Required repository settings documentation
+
 ## Contributing
 
 To add a new composite action:
