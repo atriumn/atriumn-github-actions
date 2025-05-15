@@ -108,7 +108,7 @@ runs:
             # Assign the issue to the commenter
             gh issue edit ${{ inputs.issue-number }} \
               --repo ${{ inputs.repository }} \
-              --assignee ${{ inputs.comment-user }}
+              --add-assignee ${{ inputs.comment-user }}
             ;;
             
           "done")
